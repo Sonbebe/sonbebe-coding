@@ -919,7 +919,6 @@ class VectorCastGenerator:
                     req_loop.append(loop['info'])
                     logger.debug(f"[APPLY LOOP] IF('{cond}') inside LOOP('{loop['info'].get('condition')}')")
 
-            # [NEW] Find PARENT IFs (Nesting)
             # Find any IF block that completely encloses the current IF block
             parent_ifs = []
             for p_if in if_structs:
@@ -932,7 +931,6 @@ class VectorCastGenerator:
                 if "_desc" in s:
                     del s["_desc"]
                 
-                # [NEW] Build Branch Note Path based on NESTING ONLY
                 # Format: [ParentLoop][ParentIF][CurrentIF]
                 branch_stack = []
                 
@@ -1033,12 +1031,12 @@ class VectorCastGenerator:
         desc = ""
         raw_c = scenario.get('_conditions', [])
         if raw_c:
-            desc = f"[Expression] {', '.join(raw_c)}"
+            desc = f"[Objective] {', '.join(raw_c)}"
         
         cid = f"{case_num:03d}"
         self.tst_content.append("")
         self.tst_content.append(f"--Test Case:{fname}.{cid}")
-        if desc: self.tst_content.append(f"-- [Test Case Description]{desc}")
+        if desc: self.tst_content.append(f"{desc}")
         self.tst_content.append(f"TEST.UNIT:{self.unit_name}")
         self.tst_content.append(f"TEST.SUBPROGRAM:{fname}")
         self.tst_content.append("TEST.NEW")
@@ -1048,10 +1046,10 @@ class VectorCastGenerator:
         branch_str = scenario.get('_branch_path_str', '')
         if branch_str:
             self.tst_content.append("TEST.NOTES:")
-            self.tst_content.append(f"- Branch: {branch_str}")
-            self.tst_content.append(f"- Purpose:[]")
-            self.tst_content.append(f"- Test method:[]")
-            self.tst_content.append(f"- Test case design techniques:[]")
+            if desc: self.tst_content.append(f"{desc}")
+            self.tst_content.append(f"[Conditions] {branch_str}")
+            self.tst_content.append(f"[Test method] ")
+            self.tst_content.append(f"[Test techniques] ")
             self.tst_content.append("TEST.END_NOTES:")
         # ----------------------------------------------------------
         
