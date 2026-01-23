@@ -1036,7 +1036,6 @@ class VectorCastGenerator:
         cid = f"{case_num:03d}"
         self.tst_content.append("")
         self.tst_content.append(f"--Test Case:{fname}.{cid}")
-        if desc: self.tst_content.append(f"{desc}")
         self.tst_content.append(f"TEST.UNIT:{self.unit_name}")
         self.tst_content.append(f"TEST.SUBPROGRAM:{fname}")
         self.tst_content.append("TEST.NEW")
@@ -1048,8 +1047,8 @@ class VectorCastGenerator:
             self.tst_content.append("TEST.NOTES:")
             if desc: self.tst_content.append(f"{desc}")
             self.tst_content.append(f"[Conditions] {branch_str}")
-            self.tst_content.append(f"[Test method] ")
-            self.tst_content.append(f"[Test techniques] ")
+            self.tst_content.append(f"[Test method] Requirements-base test")
+            self.tst_content.append(f"[Test techniques] Analysis of requirements")
             self.tst_content.append("TEST.END_NOTES:")
         # ----------------------------------------------------------
         
