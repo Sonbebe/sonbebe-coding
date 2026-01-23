@@ -1,0 +1,69 @@
+-----------Các Logic mà Tool Đã Cover (Điểm mạnh)-----------
+Tool hiện tại xử lý tốt các cấu trúc điều khiển luồng phổ biến trong C và logic tạo dữ liệu test cho VectorCAST.
+
+A. Phân tích Luồng điều khiển (Control Flow)
+
+- Logic MC/DC (Modified Condition/Decision Coverage):
+- Xử lý tốt các toán tử && và ||.
+- Tự động sinh ra các tổ hợp test case để phủ các nhánh True/False của điều kiện phức tạp (ví dụ: A && (B || C)).
+- Hỗ trợ Negative Testing (Test phủ định).
+- Xử lý Path Constraints (Ràng buộc đường dẫn):
+    Nested IFs (Lồng nhau): Tool hiểu rằng để vào được if (B) nằm trong if (A), thì A phải True. Nó sử dụng đệ quy (parse_recursive) để tích lũy điều kiện cha.
+    Guard Clauses (Chặn đầu hàm): Tool nhận diện được return, break, continue. Nếu gặp if (Error) return;, các test case phía sau sẽ tự động được gán điều kiện !Error (tức là Error phải False) để code chạy tiếp được.
+    Else-If Chains: Xử lý đúng logic loại trừ (để vào else if (B), thì A phải False).
+- Vòng lặp (Loops):
+    Nhận diện được for, while, do-while.
+    Smart Loop: Có khả năng trích xuất biến chạy (iterator) và biến giới hạn (bound_var). Nếu trong vòng lặp có điều kiện if (i == 5), tool có thể tự động gán giới hạn vòng lặp sao cho i chạy tới 5.
+- Switch-Case & Ternary Operator:
+    Tự động sinh test case cho từng case trong switch.
+    Tự động sinh 2 test case (True/False) cho toán tử 3 ngôi (cond) ? true : false.
+B. Xử lý Dữ liệu & VectorCAST
+
+- Stubbing (Hàm giả lập):
+    Tự động phát hiện các biến được gán giá trị từ hàm khác (VD: val = GetVal()).
+    Sinh lệnh TEST.VALUE:uut_prototype_stubs... thay vì gán giá trị trực tiếp, giúp test unit độc lập.
+- Pointers & Memory:
+    Xử lý cơ bản con trỏ NULL và malloc.
+    Có logic tính toán kích thước mảng động dựa trên chỉ số truy cập trong code (VD: thấy arr[5] sẽ cấp phát malloc 6).
+- Struct & Array:
+    Chuyển đổi cú pháp C ptr->val thành cú pháp VectorCAST ptr[0].val hoặc ptr.val tùy ngữ cảnh.
+    Hỗ trợ gán giá trị cho mảng.
+- Defines & Enums:
+    Đọc file header để thay thế các macro (#define MAX 10) và Enum bằng giá trị thực, giúp bộ giải logic hoạt động đúng.
+
+
+
+-----------Những thứ còn thiếu hoặc hạn chế (Cần cải thiện)-----------
+Do sử dụng Regex và logic tự viết thay vì một bộ Parser C chuyên nghiệp (như pycparser hoặc clang), tool có những hạn chế nhất định đối với code C phức tạp.
+
+A. Hạn chế về Bộ giải Logic (Solver Limitations)
+- Không giải được biểu thức số học phức tạp (Arithmetic Solver):
+    Hiện tại: Tool chỉ hiểu a > 10 -> gán a = 11.
+    Thiếu: Nếu code là if (a + b > 10), tool không thể tự tìm ra a=5, b=6. Nó coi a+b là một biến string.
+- Không xử lý Bitwise Operators:
+    Các toán tử bit (&, |, ^, <<, >>) thường dùng trong nhúng (embedded) chưa được xử lý tách biệt. Tool có thể coi cả cụm (reg & 0x0F) là một biến.
+- Mâu thuẫn logic (Conflict Resolution):
+    Nếu code có: if (x > 5) { ... if (x < 3) ... }. Tool hiện tại sẽ cố gắng gán x=6 rồi sau đó gán x=2 trong cùng 1 test case, dẫn đến xung đột hoặc ghi đè giá trị mà không báo lỗi logic (Unreachable code).
+B. Hạn chế về Phân tích Cú pháp (Parsing Limitations)
+- Phạm vi biến (Variable Scope / Shadowing):
+    Tool không phân biệt được biến cục bộ (local) và biến toàn cục (global) nếu chúng trùng tên. Nó quét toàn bộ body hàm.
+    Không xử lý được biến static nội bộ hàm một cách triệt để.
+- Con trỏ cấp cao:
+    Chưa hỗ trợ tốt con trỏ cấp 2 (int **pp), con trỏ hàm, hoặc ép kiểu phức tạp ((MyStruct*)ptr)->field.
+- Macro phức tạp:
+    Chỉ xử lý được #define giá trị đơn giản. Macro có tham số (VD: #define MAX(a,b) ...) hoặc macro viết trên nhiều dòng sẽ bị bỏ qua hoặc gây lỗi parse.
+C. Tính năng VectorCAST còn thiếu
+- Expected Values (Kết quả mong đợi):
+    Hiện tại tool chủ yếu sinh Input (TEST.VALUE).
+    Chưa tự động phân tích logic để sinh Expected Output (TEST.EXPECTED) cho các biến thay đổi trong hàm (ngoài biến return). Ví dụ: out->status = OK thì nên expect status là OK.
+- User Code / Test Slots:
+    Chưa hỗ trợ chèn code người dùng tùy chỉnh (TEST.SLOT) vào script.
+3. Tổng kết & Đề xuất nâng cấp
+Đánh giá: Tool test_v11.py hiện tại đã đạt mức Advanced cho nhu cầu Unit Test tự động hóa cơ bản. 
+Nó vượt trội hơn các script regex đơn giản nhờ khả năng xử lý đệ quy (recursive) và logic MC/DC.
+
+- Lộ trình nâng cấp lên "Professional/Enterprise":
+    Tích hợp Z3 Solver (Quan trọng nhất): Thay thế bộ LogicSolver tự viết bằng thư viện z3-solver của Python. 
+    (Điều này sẽ giải quyết được mọi bài toán số học (a + b > 10), bitwise, và phát hiện code không thể chạm tới (unreachable)).
+    Cải thiện Parser: Nếu dự án C quá phức tạp, cân nhắc chuyển từ Regex sang pycparser (Abstract Syntax Tree - AST) để hiểu chính xác cấu trúc code, scope biến và kiểu dữ liệu.
+    Auto-Expect Generation: Thêm logic quét các lệnh gán (LHS = RHS) ở cuối các nhánh để tự động điền TEST.EXPECTED.
