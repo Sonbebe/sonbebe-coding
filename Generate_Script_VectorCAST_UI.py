@@ -5,8 +5,8 @@ import queue
 import logging
 import os
 
-# Import Core Logic từ file test_v12.py
-# Lưu ý: test_v12.py phải nằm cùng thư mục
+# Import Core Logic from file test_v12.py
+# Note: test_v12.py must be in the same directory
 from Generate_Script_VectorCAST import VectorCastGenerator, logger
 
 class QueueHandler(logging.Handler):
