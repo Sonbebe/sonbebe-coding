@@ -5,7 +5,7 @@ import queue
 import logging
 import os
 
-from Generate_Script_VectorCAST7 import VectorCastGenerator, logger
+from Generate_Script_VectorCAST import VectorCastGenerator, logger
 
 
 class QueueHandler(logging.Handler):
@@ -182,3 +182,4 @@ def launch_ui():
 
 if __name__ == "__main__":
     launch_ui()
+
