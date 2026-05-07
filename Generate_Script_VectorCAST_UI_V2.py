@@ -67,7 +67,7 @@ class VectorCastGeneratorUI:
         )
         btn_frame = ttk.Frame(main_frame)
         btn_frame.grid(row=0, column=2)
-        ttk.Button(btn_frame, text="Select Folder", command=self._browse_c_file).pack(side=tk.LEFT, padx=1)
+        ttk.Button(btn_frame, text="Select Folder", command=self._browse_c_folder).pack(side=tk.LEFT, padx=1)
 
         # Row 1: Include Dirs
         ttk.Label(main_frame, text="Include Paths (;):").grid(
@@ -127,17 +127,27 @@ class VectorCastGeneratorUI:
         self.log_area.grid(row=8, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
         main_frame.rowconfigure(8, weight=1)
 
-    def _browse_c_file(self):
-        filename = filedialog.askopenfilename(
-            filetypes=[("C Files", "*.c"), ("All Files", "*.*")]
-        )
-        if filename:
-            self.c_file_var.set(filename)
-            # Auto-guess unit name from filename
-            basename = os.path.basename(filename)
-            unit_guess = os.path.splitext(basename)[0]
-            if not self.unit_name_var.get():
-                self.unit_name_var.set(unit_guess)
+    def _browse_path(self):
+        is_folder = messagebox.askyesno("Select Type", "Do you want to select a Folder?\n(Click 'No' to select a File)")
+        if is_folder:
+            path = filedialog.askdirectory()
+        else:
+            path = filedialog.askopenfilename(
+                filetypes=[("C/C++ Files", "*.c *.cpp *.cxx *.cc"), ("All Files", "*.*")]
+            )
+
+        if path:
+            self.c_file_var.set(path)
+            if os.path.isdir(path):
+                self.unit_name_var.set("<Auto from filename>")
+                self.output_file_var.set("<Auto from filename>")
+            else:
+                basename = os.path.basename(path)
+                unit_guess = os.path.splitext(basename)[0]
+                if not self.unit_name_var.get() or self.unit_name_var.get() == "<Auto from filename>":
+                    self.unit_name_var.set(unit_guess)
+                if not self.output_file_var.get() or self.output_file_var.get() == "<Auto from filename>":
+                    self.output_file_var.set(f"Result_{unit_guess}.tst")
 
     def _browse_c_folder(self):
         directory = filedialog.askdirectory()
