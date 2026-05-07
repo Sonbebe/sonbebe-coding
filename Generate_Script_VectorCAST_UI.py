@@ -5,7 +5,7 @@ import queue
 import logging
 import os
 
-from Generate_Script_VectorCAST import VectorCastGenerator, logger
+from TC_generator_v2 import VectorCastGenerator, logger
 
 
 class QueueHandler(logging.Handler):
@@ -27,10 +27,12 @@ class VectorCastGeneratorUI:
 
         # Variables
         self.c_file_var = tk.StringVar()
+        self.include_dirs_var = tk.StringVar()
         self.unit_name_var = tk.StringVar()
         self.env_name_var = tk.StringVar(value="TEST_SV")
         self.output_file_var = tk.StringVar(value="Result_Final.tst")
         self.verbose_var = tk.BooleanVar(value=False)
+        self.is_cpp_var = tk.BooleanVar(value=False)
 
         # Layout
         self._create_widgets()
@@ -57,70 +59,111 @@ class VectorCastGeneratorUI:
         main_frame.columnconfigure(1, weight=1)
 
         # Row 0: C File
-        ttk.Label(main_frame, text="C Source File:").grid(
+        ttk.Label(main_frame, text="C Source (File/Folder):").grid(
             row=0, column=0, sticky=tk.W, pady=5
         )
         ttk.Entry(main_frame, textvariable=self.c_file_var).grid(
             row=0, column=1, sticky=tk.EW, padx=5
         )
-        ttk.Button(main_frame, text="Browse...", command=self._browse_c_file).grid(
-            row=0, column=2
-        )
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.grid(row=0, column=2)
+        ttk.Button(btn_frame, text="Select Folder", command=self._browse_c_folder).pack(side=tk.LEFT, padx=1)
 
-        # Row 1: Unit Name
-        ttk.Label(main_frame, text="Unit Name (UUT):").grid(
+        # Row 1: Include Dirs
+        ttk.Label(main_frame, text="Include Paths (;):").grid(
             row=1, column=0, sticky=tk.W, pady=5
         )
-        ttk.Entry(main_frame, textvariable=self.unit_name_var).grid(
+        ttk.Entry(main_frame, textvariable=self.include_dirs_var).grid(
             row=1, column=1, sticky=tk.EW, padx=5
         )
+        ttk.Button(main_frame, text="Select Folder", command=self._browse_include_dir).grid(
+            row=1, column=2
+        )
 
-        # Row 2: Environment Name
-        ttk.Label(main_frame, text="Environment Name:").grid(
+        # Row 2: Unit Name
+        ttk.Label(main_frame, text="Unit Name (UUT):").grid(
             row=2, column=0, sticky=tk.W, pady=5
         )
-        ttk.Entry(main_frame, textvariable=self.env_name_var).grid(
+        ttk.Entry(main_frame, textvariable=self.unit_name_var).grid(
             row=2, column=1, sticky=tk.EW, padx=5
         )
 
-        # Row 3: Output File
-        ttk.Label(main_frame, text="Output Filename:").grid(
+        # Row 3: Environment Name
+        ttk.Label(main_frame, text="Environment Name:").grid(
             row=3, column=0, sticky=tk.W, pady=5
         )
-        ttk.Entry(main_frame, textvariable=self.output_file_var).grid(
+        ttk.Entry(main_frame, textvariable=self.env_name_var).grid(
             row=3, column=1, sticky=tk.EW, padx=5
         )
 
-        # Row 4: Options
+        # Row 4: Output File
+        ttk.Label(main_frame, text="Output Filename:").grid(
+            row=4, column=0, sticky=tk.W, pady=5
+        )
+        ttk.Entry(main_frame, textvariable=self.output_file_var).grid(
+            row=4, column=1, sticky=tk.EW, padx=5
+        )
+
+        # Row 5: Options
         ttk.Checkbutton(
             main_frame, text="Verbose Logging (Debug)", variable=self.verbose_var
-        ).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=10)
+        ).grid(row=5, column=0, sticky=tk.W, pady=10)
 
-        # Row 5: Run Button
+        ttk.Checkbutton(
+            main_frame, text="C++ Mode", variable=self.is_cpp_var
+        ).grid(row=5, column=1, sticky=tk.W, pady=10)
+
+        # Row 6: Run Button
         self.run_btn = ttk.Button(
             main_frame, text="GENERATE SCRIPT", command=self._start_generation_thread
         )
-        self.run_btn.grid(row=5, column=0, columnspan=3, pady=10, sticky=tk.EW)
+        self.run_btn.grid(row=6, column=0, columnspan=3, pady=10, sticky=tk.EW)
 
-        # Row 6: Log Area
-        ttk.Label(main_frame, text="Execution Log:").grid(row=6, column=0, sticky=tk.W)
+        # Row 7: Log Area
+        ttk.Label(main_frame, text="Execution Log:").grid(row=7, column=0, sticky=tk.W)
         self.log_area = scrolledtext.ScrolledText(
             main_frame, height=15, state="disabled"
         )
-        self.log_area.grid(row=7, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
-        main_frame.rowconfigure(7, weight=1)
+        self.log_area.grid(row=8, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
+        main_frame.rowconfigure(8, weight=1)
 
-    def _browse_c_file(self):
-        filename = filedialog.askopenfilename(
-            filetypes=[("C Files", "*.c"), ("All Files", "*.*")]
-        )
-        if filename:
-            self.c_file_var.set(filename)
-            # Auto-guess unit name from filename
-            basename = os.path.basename(filename)
-            unit_guess = os.path.splitext(basename)[0]
-            if not self.unit_name_var.get():
-                self.unit_name_var.set(unit_guess)
+    def _browse_path(self):
+        is_folder = messagebox.askyesno("Select Type", "Do you want to select a Folder?\n(Click 'No' to select a File)")
+        if is_folder:
+            path = filedialog.askdirectory()
+        else:
+            path = filedialog.askopenfilename(
+                filetypes=[("C/C++ Files", "*.c *.cpp *.cxx *.cc"), ("All Files", "*.*")]
+            )
+
+        if path:
+            self.c_file_var.set(path)
+            if os.path.isdir(path):
+                self.unit_name_var.set("<Auto from filename>")
+                self.output_file_var.set("<Auto from filename>")
+            else:
+                basename = os.path.basename(path)
+                unit_guess = os.path.splitext(basename)[0]
+                if not self.unit_name_var.get() or self.unit_name_var.get() == "<Auto from filename>":
+                    self.unit_name_var.set(unit_guess)
+                if not self.output_file_var.get() or self.output_file_var.get() == "<Auto from filename>":
+                    self.output_file_var.set(f"Result_{unit_guess}.tst")
+
+    def _browse_c_folder(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            self.c_file_var.set(directory)
+            self.unit_name_var.set("<Auto from filename>")
+            self.output_file_var.set("<Auto from filename>")
+
+    def _browse_include_dir(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            current = self.include_dirs_var.get()
+            if current:
+                self.include_dirs_var.set(current + ";" + directory)
+            else:
+                self.include_dirs_var.set(directory)
 
     def _poll_log_queue(self):
         while True:
@@ -145,14 +188,16 @@ class VectorCastGeneratorUI:
         thread.start()
 
     def _run_generation(self):
-        c_file = self.c_file_var.get()
-        unit_name = self.unit_name_var.get()
-        env_name = self.env_name_var.get()
-        output_file = self.output_file_var.get()
+        input_path = self.c_file_var.get()
+        include_dirs_str = self.include_dirs_var.get()
+        base_env_name = self.env_name_var.get()
         verbose = self.verbose_var.get()
+        is_cpp = self.is_cpp_var.get()
+        
+        include_dirs = [d.strip() for d in include_dirs_str.split(';') if d.strip()]
 
-        if not c_file or not unit_name:
-            logger.error("Missing required fields: C File or Unit Name.")
+        if not input_path:
+            logger.error("Missing required field: C Source.")
             self.root.after(0, lambda: self.run_btn.config(state="normal"))
             return
 
@@ -162,11 +207,37 @@ class VectorCastGeneratorUI:
             logger.setLevel(logging.INFO)
 
         try:
-            generator = VectorCastGenerator(c_file, unit_name, env_name)
-            generator.run(output_file)
-            messagebox.showinfo(
-                "Success", f"Script generated successfully:\n{output_file}"
-            )
+            if os.path.isdir(input_path):
+                c_files = []
+                for root_dir, dirs, files in os.walk(input_path):
+                    for file in files:
+                        if file.endswith(('.c', '.cpp', '.cxx', '.cc')):
+                            c_files.append(os.path.join(root_dir, file))
+            else:
+                c_files = [input_path]
+
+            if not c_files:
+                logger.warning("No C/C++ files found in the specified path.")
+                return
+
+            for c_file in c_files:
+                basename = os.path.basename(c_file)
+                name_without_ext = os.path.splitext(basename)[0]
+                
+                if os.path.isdir(input_path):
+                    unit_name = name_without_ext
+                    output_file = f"Result_{unit_name}.tst"
+                    env_name = f"{base_env_name}_{unit_name}"
+                else:
+                    unit_name = self.unit_name_var.get() or name_without_ext
+                    output_file = self.output_file_var.get() or f"Result_{unit_name}.tst"
+                    env_name = base_env_name
+
+                logger.info(f"Processing: {c_file} -> Unit: {unit_name}")
+                generator = VectorCastGenerator(c_file, unit_name, env_name, include_dirs, is_cpp=is_cpp)
+                generator.run(output_file)
+                
+            messagebox.showinfo("Success", f"Script(s) generated successfully for {len(c_files)} file(s).")
         except Exception as e:
             logger.exception("An error occurred during generation.")
             messagebox.showerror("Error", f"An error occurred:\n{str(e)}")
@@ -182,4 +253,3 @@ def launch_ui():
 
 if __name__ == "__main__":
     launch_ui()
-
